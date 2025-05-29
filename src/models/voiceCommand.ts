@@ -16,7 +16,11 @@ const voiceCommandSchema: Schema<IVoiceCommand> = new Schema(
       type: String,
       required: false,
     },
-    // emergencyContact field removed here
+    emergencyContact: {
+      type: Schema.Types.ObjectId,
+      required: false,   // <-- optional now
+      ref: "EmergencyContact",
+    },
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true, versionKey: false }

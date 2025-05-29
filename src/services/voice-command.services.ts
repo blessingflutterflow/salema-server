@@ -3,7 +3,6 @@ import { validationResult } from "express-validator";
 
 import { AddUpdateVoiceCommandDto } from "../utils/types/voice-command";
 import VoiceCommand from "../models/voice-command.modal";
-import EmergencyContact from "../models/emergency-contact.model";
 import CustomRequest from "../utils/types/express";
 
 const addVoiceCommand = async (
@@ -12,72 +11,118 @@ const addVoiceCommand = async (
 ): Promise<any> => {
   try {
     const errors = validationResult(req);
-
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
     const user = req.user;
-
     if (!user) {
-      return res
-        .status(401)
-        .json({ status: "ERROR", message: "Unauthorized: User not found." });
+      return res.status(401).json({ status: "ERROR", message: "Unauthorized: User not found." });
     }
 
-    const { text, type, emergencyContact }: AddUpdateVoiceCommandDto = req.body;
-
-    const findEmergencyContact = await EmergencyContact.findById(
-      emergencyContact
-    );
-
-    if (!findEmergencyContact) {
-      return res.status(404).json({
-        status: "ERROR",
-        message: "Emergency contact not found.",
-      });
-    }
-
-    let existingVoiceCommand = await VoiceCommand.findOne({ emergencyContact });
-
-    if (existingVoiceCommand) {
-      return res.status(401).json({
-        status: "ERROR",
-        message: "Voice command already added to this emergency contact.",
-      });
-    }
+    const { text, type }: AddUpdateVoiceCommandDto = req.body;
 
     const voiceCommand = new VoiceCommand({
       client: user.id,
       text,
       type,
-      emergencyContact,
+      emergencyContact: null, // Always null since no emergency contact
       isDeleted: false,
     });
 
     await voiceCommand.save();
 
-    let updateEmergencyContact = await EmergencyContact.findByIdAndUpdate(
-      emergencyContact,
-      { voiceCommandText: text },
-      { new: true, runValidators: true }
-    );
-
-    await updateEmergencyContact?.save();
-
     return res.status(201).json({
       status: "OK",
       message: "Voice command added successfully.",
+      data: voiceCommand,
     });
   } catch (error: any) {
     console.error(error);
-
     return res.status(500).json({
       status: "ERROR",
       message: error.message || "Internal server error.",
     });
   }
 };
+
+//save recording
+const saveRecording = async (
+  req: CustomRequest,
+  res: Response
+): Promise<any> => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ status: "ERROR", errors: errors.array() });
+    }
+
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ status: "ERROR", message: "Unauthorized: User not found." });
+    }
+
+    const { phrase } = req.body;
+    if (!phrase || typeof phrase !== "string") {
+      return res.status(400).json({ status: "ERROR", message: "Phrase is required and must be a string." });
+    }
+
+    const newRecording = new VoiceCommand({
+      client: user.id,
+      text: phrase,
+      type: "recording",
+      emergencyContact: null,
+      isDeleted: false,
+    });
+
+    await newRecording.save();
+
+    return res.status(201).json({
+      status: "OK",
+      message: "Phrase saved successfully.",
+      data: newRecording,
+    });
+  } catch (error: any) {
+    console.error("saveRecording error:", error);
+    return res.status(500).json({
+      status: "ERROR",
+      message: error.message || "Internal server error.",
+    });
+  }
+};
+
+//get recording
+const getVoiceCommandsForCurrentClient = async (
+  req: CustomRequest,
+  res: Response
+): Promise<any> => {
+  try {
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({
+        status: "ERROR",
+        message: "Unauthorized: User not found.",
+      });
+    }
+
+    const voiceCommands = await VoiceCommand.find({
+      client: user.id,
+      isDeleted: false,
+    }).select("text type");
+
+    return res.status(200).json({
+      status: "OK",
+      voiceCommands,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      status: "ERROR",
+      message: error.message || "Internal server error.",
+    });
+  }
+};
+
 
 const listVoiceCommands = async (
   req: CustomRequest,
@@ -87,15 +132,9 @@ const listVoiceCommands = async (
     const user = req.user;
 
     const voiceCommands = await VoiceCommand.find({
-      client: user,
+      client: user?.id,
       isDeleted: false,
-    })
-      .select("text type emergencyContact")
-      .populate({
-        path: "emergencyContact",
-        model: "EmergencyContact",
-        select: "-updatedAt -createdAt -isDeleted -client",
-      });
+    }).select("text type emergencyContact"); // emergencyContact will always be null
 
     return res.status(200).json({ status: "OK", voiceCommands });
   } catch (error: any) {
@@ -124,18 +163,7 @@ const updateVoiceCommand = async (
       { new: true, runValidators: true }
     );
 
-    let updateEmergencyContact = await EmergencyContact.findByIdAndUpdate(
-      updatedVoiceCommand?.emergencyContact,
-      { voiceCommandText: text },
-      { new: true, runValidators: true }
-    );
-
-    await updateEmergencyContact?.save();
-
-    if (
-      !updatedVoiceCommand ||
-      !updatedVoiceCommand.client.equals(req.user?.id)
-    ) {
+    if (!updatedVoiceCommand || !updatedVoiceCommand.client.equals(req.user?.id)) {
       return res.status(404).json({ message: "Voice command not found." });
     }
 
@@ -169,27 +197,14 @@ const deleteVoiceCommand = async (
       { new: true, runValidators: true }
     );
 
-    if (
-      !updatedVoiceCommand ||
-      !updatedVoiceCommand.client.equals(req.user?.id)
-    ) {
+    if (!updatedVoiceCommand || !updatedVoiceCommand.client.equals(req.user?.id)) {
       return res.status(404).json({
         status: "ERROR",
         message: "Voice command details not found.",
       });
     }
 
-    let updateEmergencyContact = await EmergencyContact.findByIdAndUpdate(
-      updatedVoiceCommand?.emergencyContact,
-      { voiceCommandText: "" },
-      { new: true, runValidators: true }
-    );
-
-    await updateEmergencyContact?.save();
-
-    return res
-      .status(200)
-      .json({ status: "OK", message: "Deleted successfully." });
+    return res.status(200).json({ status: "OK", message: "Deleted successfully." });
   } catch (error: any) {
     return res.status(500).json({
       status: "ERROR",
@@ -203,4 +218,6 @@ export default {
   listVoiceCommands,
   updateVoiceCommand,
   deleteVoiceCommand,
+  saveRecording,
+  getVoiceCommandsForCurrentClient,
 };

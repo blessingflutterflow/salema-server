@@ -51,6 +51,7 @@ const login = async (req: Request, res: Response): Promise<any> => {
       message: "Login successful",
       role: user.role,
       access_token,
+      userName:   user.userName,
     });
   } catch (error) {
     console.error("Login error:", error);

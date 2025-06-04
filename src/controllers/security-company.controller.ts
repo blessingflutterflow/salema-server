@@ -60,6 +60,13 @@ router.post(
 );
 
 router.get(
+  "/phones",
+  decodeToken, // optional: only if you want auth
+  authorizeClient, // or `authorizeAdmin` or none if public
+  securityCompanyServices.getSecurityCompanyPhones
+);
+
+router.get(
   "/verify/:id",
   param("id")
     .exists()
@@ -272,5 +279,8 @@ router.get(
   authorizeSecurityCompany,
   securityCompanyServices.myProfile
 );
+
+
+
 
 export default router;

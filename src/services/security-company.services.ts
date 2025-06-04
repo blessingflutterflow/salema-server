@@ -589,6 +589,36 @@ const myProfile = async (req: CustomRequest, res: Response): Promise<any> => {
   }
 };
 
+const getSecurityCompanyPhones = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const companies = await SecurityCompany.find({
+      isDeleted: false,
+      verificationStatus: "verified",
+    }).select("phone companyName");
+
+    const phones = companies.map((company) => ({
+      companyName: company.companyName,
+      phone: company.phone,
+    }));
+
+    return res.status(200).json({
+      status: "OK",
+      phones,
+    });
+  } catch (error) {
+    console.error("Error fetching company phones:", error);
+    return res.status(500).json({
+      status: "ERROR",
+      message: "Failed to fetch security company phones",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+
 export default {
   register,
   verify,
@@ -602,4 +632,5 @@ export default {
   listAll,
   decline,
   myProfile,
+  getSecurityCompanyPhones,
 };

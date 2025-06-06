@@ -53,9 +53,20 @@ const userSchema: Schema<IUser> = new Schema(
       type: Boolean,
       default: false,
     },
+
+    // 👇 Add these two lines for password reset
+    resetToken: {
+      type: String,
+      required: false,
+    },
+    resetTokenExpiry: {
+      type: Date,
+      required: false,
+    },
   },
   { timestamps: true, versionKey: false }
 );
+
 
 userSchema.pre<IUser>("save", async function (next) {
   if (this.isModified("passwordHash")) {

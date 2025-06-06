@@ -15,6 +15,9 @@ export interface IUser extends Document {
   isActive: boolean;
   remarks: string;
   isDeleted: boolean;
+  resetToken?: string | null;
+ resetTokenExpiry?: Date | null;
+
   _id: mongoose.Types.ObjectId;
 }
 

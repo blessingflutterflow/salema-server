@@ -152,6 +152,14 @@ router.post(
 );
 
 router.get(
+  "/phones",
+  decodeToken,
+  authorizeClient,
+  securityCompanyServices.getSecurityCompanyPhones
+);
+
+
+router.get(
   "/list",
   decodeToken,
   authorizeClient,

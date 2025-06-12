@@ -14,7 +14,7 @@ const clientSchema: Schema<IClient> = new Schema(
     contact: {
       type: String,
       required: true,
-      unique: true,
+      //unique: true,
     },
     address: { type: String, required: false },
     securityCompaniesUsed: [

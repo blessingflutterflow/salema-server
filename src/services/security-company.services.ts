@@ -16,6 +16,7 @@ import FcmToken from "../models/fcmToken.model";
 import { sendNotification } from "../utils/helpers/fcm-messager";
 import { sendEmail } from "../utils/helpers/mailer";
 import { registerSecurityOfficerEmailBody } from "../utils/helpers/templates/register-security-officer-template";
+import {sendAdminNotification} from './email.Services'
 
 const register = async (req: Request, res: Response): Promise<any> => {
   let savedCompany = null;
@@ -59,6 +60,8 @@ const register = async (req: Request, res: Response): Promise<any> => {
     });
 
     savedCompany = await securityCompany.save();
+    sendAdminNotification(companyName, email, phone);
+
 
     const user = new User({
       userName: companyName,
@@ -75,18 +78,7 @@ const register = async (req: Request, res: Response): Promise<any> => {
     await user.save();
 
     const jwtSecret = process.env.JWT_SECRET ?? "JWT_SECRET";
-    const access_token = jwt.sign(
-      {
-        id: user._id,
-        email: user.email,
-        role: user.role,
-        permission: user.permissions,
-      },
-      jwtSecret,
-      {
-        expiresIn: "24h",
-      }
-    );
+    
 
     const fcmTokens = await FcmToken.find({ role: "AD" }).select("fcmToken");
 
@@ -101,7 +93,7 @@ const register = async (req: Request, res: Response): Promise<any> => {
     return res.status(201).json({
       status: "OK",
       message: "Registered Security Company",
-      access_token,
+     
     });
   } catch (error) {
     if (savedCompany) {

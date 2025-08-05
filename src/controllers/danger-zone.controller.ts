@@ -8,7 +8,7 @@ import authorizeAdmin from "../middlewares/authorizeAdmin";
 const router = express.Router();
 
 router.post(
-  "/",
+  "/save",
 
   body("name")
     .isString()
@@ -113,24 +113,7 @@ router.delete(
 
 router.get("/", decodeToken, dangerZoneServices.list);
 
-router.post(
-  "/check",
-  body("location")
-    .exists()
-    .withMessage("Location is required.")
-    .isObject()
-    .withMessage("Location must be an object.")
-    .custom((value) => {
-      if (
-        typeof value.latitude !== "number" ||
-        typeof value.longitude !== "number"
-      ) {
-        throw new Error("Latitude and Longitude must be numbers.");
-      }
-      return true;
-    }),
-  decodeToken,
-  dangerZoneServices.check
-);
+router.post('/check', dangerZoneServices.check);
+
 
 export default router;

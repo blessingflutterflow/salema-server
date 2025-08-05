@@ -26,19 +26,25 @@ router.post(
   voiceCommandServices.addVoiceCommand
 );
 
-// New route to save recording
+// Save new voice command for current client
 router.post(
-  "/save-recording",
-  body("phrase")
+  "/client",
+  body("text")
     .isString()
-    .withMessage("Phrase must be string.")
+    .withMessage("Text must be string.")
     .notEmpty()
-    .withMessage("Phrase is required."),
+    .withMessage("Text is required."),
+  body("type").optional().isString().withMessage("Type must be string."),
+  body("emergencyContact")
+    .optional()
+    .isMongoId()
+    .withMessage("Invalid emergency contact ID"),
 
   decodeToken,
   authorizeClient,
-  voiceCommandServices.saveRecording
+  voiceCommandServices.addVoiceCommand
 );
+
 // GET /client
 router.get(
   "/client",
@@ -51,6 +57,16 @@ router.get(
 
 // List all voice commands
 router.get("/", decodeToken, authorizeClient, voiceCommandServices.listVoiceCommands);
+
+router.delete(
+  "/hard-delete/:id",
+  param("id").isMongoId().withMessage("Invalid voice command ID."),
+
+  decodeToken,
+  authorizeClient,
+  voiceCommandServices.hardDeleteVoiceCommand
+);
+
 
 // Update a voice command by ID
 router.put(

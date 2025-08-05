@@ -197,6 +197,10 @@ const deleteVoiceCommand = async (
       { new: true, runValidators: true }
     );
 
+    // 🔍 Debug logs to trace mismatch
+    console.log('💥 VoiceCommand.client:', updatedVoiceCommand?.client?.toString());
+    console.log('🔐 req.user.id:', req.user?.id);
+
     if (!updatedVoiceCommand || !updatedVoiceCommand.client.equals(req.user?.id)) {
       return res.status(404).json({
         status: "ERROR",
@@ -213,6 +217,33 @@ const deleteVoiceCommand = async (
   }
 };
 
+const hardDeleteVoiceCommand = async (req: CustomRequest, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ status: "ERROR", message: "Unauthorized: User not found." });
+    }
+
+    const deleted = await VoiceCommand.findOneAndDelete({
+      _id: id,
+      client: user.id,
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ status: "ERROR", message: "Voice command not found or unauthorized." });
+    }
+
+    return res.status(200).json({ status: "OK", message: "Voice command permanently deleted." });
+  } catch (error: any) {
+    console.error("hardDeleteVoiceCommand error:", error);
+    return res.status(500).json({ status: "ERROR", message: error.message || "Internal server error." });
+  }
+};
+
+
+
 export default {
   addVoiceCommand,
   listVoiceCommands,
@@ -220,4 +251,5 @@ export default {
   deleteVoiceCommand,
   saveRecording,
   getVoiceCommandsForCurrentClient,
+  hardDeleteVoiceCommand,
 };

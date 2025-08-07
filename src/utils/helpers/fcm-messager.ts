@@ -9,18 +9,31 @@ export const sendNotification = async (
   const promises = tokens.map(async (token) => {
     if (typeof token === "string" && token.length > 0) {
       try {
+        console.log(`📲 Sending FCM to token: ${token}`);
         await admin.messaging().send({
+          token,
           notification: {
             title,
             body: message,
           },
-          token,
+          android: {
+            notification: {
+              channelId: 'danger-alerts',
+              sound: 'default',
+              priority: 'high',
+            },
+          },
         });
+        
       } catch (firebaseError: any) {
-        if (firebaseError.code === "messaging/invalid-argument") {
+        if (
+          firebaseError.code === "messaging/invalid-argument" ||
+          firebaseError.code === "messaging/registration-token-not-registered"
+        ) {
           await FcmToken.deleteOne({ fcmToken: token });
-          console.warn(`Removed invalid FCM token: ${token}`);
-        } else {
+          console.warn(`❌ Removed invalid FCM token: ${token}`);
+        }
+         else {
           console.error("Error sending FCM notification:", firebaseError);
         }
       }

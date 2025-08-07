@@ -103,18 +103,15 @@ const check = async (req: CustomRequest, res: Response): Promise<any> => {
     const dangerZones = await DangerZone.find({ isDeleted: false });
 
     for (const zone of dangerZones) {
+      let isInside = false;
+
       if (zone.type === 'Polygon' && zone.location?.coordinates?.length) {
         const polygon = zone.location.coordinates[0].map(coord => ({
           latitude: coord[1],
           longitude: coord[0],
         }));
 
-        if (geolib.isPointInPolygon({ latitude, longitude }, polygon)) {
-          return res.status(200).json({
-            status: 'OK',
-            message: `You are within - ${zone.name}`,
-          });
-        }
+        isInside = geolib.isPointInPolygon({ latitude, longitude }, polygon);
       }
 
       if (zone.type === 'Circle' && zone.center?.coordinates?.length === 2) {
@@ -125,13 +122,27 @@ const check = async (req: CustomRequest, res: Response): Promise<any> => {
             longitude: zone.center.coordinates[0],
           }
         );
+        isInside = distance <= (zone.radius || 0);
+      }
 
-        if (distance <= (zone.radius || 0)) {
-          return res.status(200).json({
-            status: 'OK',
-            message: `You are within - ${zone.name}`,
-          });
-        }
+      if (isInside) {
+        // 🔔 1. Fetch all FCM tokens to notify
+        const fcmTokens = await FcmToken.find({}, "fcmToken");
+
+        const tokenList = fcmTokens.map(t => t.fcmToken).filter(Boolean);
+
+        // 🔔 2. Send the notification
+        await sendNotification(
+          tokenList,
+          "Danger Zone Alert",
+          `Someone has entered the danger zone: ${zone.name}`
+        );
+
+        // 🧾 3. Respond to the user
+        return res.status(200).json({
+          status: 'OK',
+          message: `You are within - ${zone.name}`,
+        });
       }
     }
 
@@ -147,6 +158,7 @@ const check = async (req: CustomRequest, res: Response): Promise<any> => {
     });
   }
 };
+
 
 export default {
   create,

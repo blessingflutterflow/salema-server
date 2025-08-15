@@ -135,7 +135,7 @@ const check = async (req: CustomRequest, res: Response): Promise<any> => {
         await sendNotification(
           tokenList,
           "Danger Zone Alert",
-          `Someone has entered the danger zone: ${zone.name}`
+          `Safety Alert: You’ve entered a dangerous area —  ${zone.name}`
         );
 
         // 🧾 3. Respond to the user

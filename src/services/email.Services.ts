@@ -8,7 +8,7 @@ export const sendAdminNotification = async (
   const subject = "New Security Company Registration";
 
   const now = new Date();
-  const dateTime = now.toLocaleString(); // Uses system's local time
+  const dateTime = now.toLocaleString(); 
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const html = `
@@ -20,7 +20,7 @@ export const sendAdminNotification = async (
   `;
 
   await sendEmail({
-    to: ["temoshomaduane@gmail.com"],
+    to: ["temoshomaduane@gmail.com", "morekolodi.mankuroane@gmail.com"],
     subject,
     html,
   });

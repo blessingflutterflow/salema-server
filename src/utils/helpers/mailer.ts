@@ -1,10 +1,12 @@
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "kenway.aserv.co.za", // your outgoing server
+  port: 465,                  // secure SMTP port
+  secure: true,               // true for port 465
   auth: {
-    user: "temoshomaduane@gmail.com", // Your Gmail
-    pass: "adkmxrzgpmnqpoeb",         // 16-digit App Password
+    user: "admin@mansalema.co.za", // your email
+    pass: "Mansalema@25",   // your actual password
   },
 });
 
@@ -18,7 +20,7 @@ export const sendEmail = async ({
   html: string;
 }) => {
   await transporter.sendMail({
-    from: '"Temosho Shaku" <temoshomaduane@gmail.com>',
+    from: '"Salema Admin" <admin@mansalema.co.za>', // shows as sender
     to,
     subject,
     html,

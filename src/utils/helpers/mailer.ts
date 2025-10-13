@@ -1,15 +1,16 @@
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-  host: "kenway.aserv.co.za", // your outgoing server
-  port: 465,                  // secure SMTP port
-  secure: true,               // true for port 465
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT || "465"),
+  secure: true,
   auth: {
-    user: "admin@mansalema.co.za", // your email
-    pass: "Mansalema@25",   // your actual password
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
   },
 });
 
+// Generic email sender
 export const sendEmail = async ({
   to,
   subject,
@@ -20,7 +21,30 @@ export const sendEmail = async ({
   html: string;
 }) => {
   await transporter.sendMail({
-    from: '"Salema Admin" <admin@mansalema.co.za>', // shows as sender
+    from: '"Salema Admin" <admin@mansalema.co.za>',
+    to,
+    subject,
+    html,
+  });
+};
+
+// Specific function to resend the forgot password code
+export const sendResendCode = async ({
+  to,
+  resetCode,
+}: {
+  to: string[];
+  resetCode: string;
+}) => {
+  const subject = "Salema Password Reset Code";
+  const html = `
+    <p>You requested to resend your password reset code.</p>
+    <p>Your new code is: <b>${resetCode}</b></p>
+    <p>This code expires in 15 minutes.</p>
+  `;
+
+  await transporter.sendMail({
+    from: '"Salema Admin" <admin@mansalema.co.za>',
     to,
     subject,
     html,

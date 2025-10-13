@@ -24,6 +24,7 @@ const register = async (req: Request, res: Response): Promise<any> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log("Validation errors:", errors.array());
       return res.status(400).json({ status: "ERROR", errors: errors.array() });
     }
 
@@ -39,8 +40,8 @@ const register = async (req: Request, res: Response): Promise<any> => {
       address,
     }: RegisterCompanyDto = req.body;
 
+    // Check if email already exists
     const existingUser = await User.findOne({ email });
-
     if (existingUser) {
       return res.status(409).json({
         status: "ERROR",
@@ -62,7 +63,6 @@ const register = async (req: Request, res: Response): Promise<any> => {
     savedCompany = await securityCompany.save();
     sendAdminNotification(companyName, email, phone);
 
-
     const user = new User({
       userName: companyName,
       userId:
@@ -77,11 +77,7 @@ const register = async (req: Request, res: Response): Promise<any> => {
 
     await user.save();
 
-    const jwtSecret = process.env.JWT_SECRET ?? "JWT_SECRET";
-    
-
     const fcmTokens = await FcmToken.find({ role: "AD" }).select("fcmToken");
-
     const tokens = fcmTokens.map((tokenDoc) => tokenDoc.fcmToken);
 
     await sendNotification(
@@ -93,12 +89,25 @@ const register = async (req: Request, res: Response): Promise<any> => {
     return res.status(201).json({
       status: "OK",
       message: "Registered Security Company",
-     
     });
-  } catch (error) {
+  } catch (error: any) {
+    // Handle duplicate key errors for phone or email
+    if (error.code === 11000) {
+      let duplicateField = Object.keys(error.keyValue)[0];
+      let message = "";
+      if (duplicateField === "phone") message = "Phone number already exists";
+      if (duplicateField === "email") message = "Email already exists";
+
+      return res.status(409).json({
+        status: "ERROR",
+        message,
+      });
+    }
+
     if (savedCompany) {
       await SecurityCompany.deleteOne({ _id: savedCompany._id });
     }
+
     return res.status(400).json({
       status: "ERROR",
       message: "Error registering security company and user",

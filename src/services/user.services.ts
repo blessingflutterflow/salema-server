@@ -2,10 +2,10 @@ import { Request, Response } from "express";
 import { validationResult } from "express-validator";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-
+import nodemailer from 'nodemailer';
 import User from "../models/user.model";
 import SecurityCompany from "../models/security-company.model";
-
+import { sendResendCode } from "../utils/helpers/mailer";
 
 import CustomRequest from "../utils/types/express";
 import { ResetPasswordDto } from "../utils/types/user";
@@ -81,25 +81,27 @@ const login = async (req: Request, res: Response): Promise<any> => {
 const forgotPassword = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email } = req.body;
-
     const user = await User.findOne({ email });
+
     if (!user || user.isDeleted) {
       res.status(404).json({ status: "ERROR", message: "User not found." });
       return;
     }
 
-    const resetToken = Math.random().toString(36).substring(2);
-    const resetTokenExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    // Generate 6-digit code
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetCodeExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
 
-    user.resetToken = resetToken;
-    user.resetTokenExpiry = resetTokenExpiry;
+    user.resetToken = resetCode;
+    user.resetTokenExpiry = resetCodeExpiry;
     await user.save();
 
-    // In production, send resetToken via email
+    // Send email using sendResendCode
+    await sendResendCode({ to: [email], resetCode });
+
     res.status(200).json({
       status: "OK",
-      message: "Reset token generated.",
-      resetToken, // remove in production
+      message: "Reset code sent to your email.",
     });
   } catch (error) {
     console.error("Forgot password error:", error);
@@ -118,22 +120,31 @@ const resetWithToken = async (req: Request, res: Response): Promise<void> => {
       !user.resetTokenExpiry ||
       user.resetTokenExpiry < new Date()
     ) {
-      res.status(400).json({ status: "ERROR", message: "Invalid or expired token." });
+      res.status(400).json({
+        status: "ERROR",
+        message: "Invalid or expired code.",
+      });
       return;
     }
 
-    user.passwordHash = newPassword; // rely on pre-save hook
-
+    user.passwordHash = newPassword; // pre-save hook will hash
     user.resetToken = null;
     user.resetTokenExpiry = null;
     await user.save();
 
-    res.status(200).json({ status: "OK", message: "Password reset successful." });
+    res.status(200).json({
+      status: "OK",
+      message: "Password reset successful.",
+    });
   } catch (error) {
     console.error("Reset with token error:", error);
-    res.status(500).json({ status: "ERROR", message: "Internal server error." });
+    res.status(500).json({
+      status: "ERROR",
+      message: "Internal server error.",
+    });
   }
 };
+
 
 
 

@@ -13,6 +13,8 @@ export interface ISecurityCompany {
   verificationStatus: "unverified" | "verified" | "declined";
   verifiedAt?: Date;
   verifiedBy?: mongoose.Types.ObjectId;
+  latitude: number;     
+  longitude: number;
 }
 
 export interface RegisterCompanyDto {
@@ -25,6 +27,8 @@ export interface RegisterCompanyDto {
   password: string;
   branches: string[];
   securityServices: string[];
+  latitude: number;    
+  longitude: number;
 }
 
 export interface UpdateCompanyDto {

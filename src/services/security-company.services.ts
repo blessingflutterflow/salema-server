@@ -38,6 +38,8 @@ const register = async (req: Request, res: Response): Promise<any> => {
       branches,
       securityServices,
       address,
+      latitude,
+      longitude,
     }: RegisterCompanyDto = req.body;
 
     // Check if email already exists
@@ -56,6 +58,8 @@ const register = async (req: Request, res: Response): Promise<any> => {
       psiraNumber,
       address,
       email,
+      latitude,
+      longitude,
       servicesOffered: securityServices,
       branches,
     });
@@ -619,6 +623,62 @@ const getSecurityCompanyPhones = async (
   }
 };
 
+const findNearestCompany = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { latitude, longitude } = req.body;
+
+    const companies = await SecurityCompany.find({
+      isDeleted: false,
+      verificationStatus: "verified",
+      latitude: { $exists: true },
+      longitude: { $exists: true },
+    }).select("companyName phone latitude longitude");
+    
+
+    if (companies.length === 0) {
+      return res.status(404).json({ status: "ERROR", message: "No companies found" });
+    }
+
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+      const R = 6371; // Earth radius in km
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLon / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c; // distance in km
+    };
+    
+    // Find the nearest
+    let nearest = companies[0];
+    let minDistance = calculateDistance(latitude, longitude, nearest.latitude, nearest.longitude);
+
+    for (const company of companies) {
+      const distance = calculateDistance(latitude, longitude, company.latitude, company.longitude);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearest = company;
+      }
+    }
+
+    return res.status(200).json({
+      status: "OK",
+      nearestCompany: {
+        name: nearest.companyName,
+        phone: nearest.phone,
+        distance: minDistance.toFixed(2) + " km",
+      },
+    });
+  } catch (error: any) {
+    console.error(error);
+    return res.status(500).json({ status: "ERROR", message: "Internal Server Error" });
+  }
+};
+
+
 
 export default {
   register,
@@ -634,4 +694,5 @@ export default {
   decline,
   myProfile,
   getSecurityCompanyPhones,
+  findNearestCompany,
 };

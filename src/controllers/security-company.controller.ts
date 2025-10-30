@@ -273,6 +273,15 @@ router.patch(
   authorizeSecurityCompany,
   securityCompanyServices.deleteOfficer
 );
+router.post(
+  "/nearest",
+  body("latitude").isNumeric().withMessage("Latitude is required"),
+  body("longitude").isNumeric().withMessage("Longitude is required"),
+  decodeToken,
+  authorizeClient,
+  securityCompanyServices.findNearestCompany
+);
+
 
 router.get(
   "/",

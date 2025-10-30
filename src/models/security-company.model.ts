@@ -25,6 +25,15 @@ const securityCompanySchema: Schema<ISecurityCompany> = new Schema(
       unique: true,
       required: true,
     },
+    latitude: {
+      type: Number,
+      required: true,
+    },
+    longitude: {
+      type: Number,
+      required: true,
+    },
+    
     servicesOffered: {
       type: [String],
       required: true,

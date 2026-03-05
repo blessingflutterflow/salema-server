@@ -7,6 +7,7 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "noEmitOnError": false,
     "types": ["node"],
     "typeRoots": ["./node_modules/@types", "./src/utils/types"]
   },

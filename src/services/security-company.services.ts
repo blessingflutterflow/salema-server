@@ -499,8 +499,7 @@ const deleteOfficer = async (
       return res.status(400).json({ status: "ERROR", errors: errors.array() });
     }
 
-    const officerId = req.params.id;
-    const officerObjectId = new Types.ObjectId(officerId);
+    const officerObjectId = new Types.ObjectId(String(req.params.id));
 
     const companyId = req.user?.profile;
 

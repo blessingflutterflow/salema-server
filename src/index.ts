@@ -20,15 +20,23 @@ import emergencyAlertRouter from "./controllers/emergency-alert.controller";
 import eventRouter from "./controllers/event.controller";
 import voiceCommandRouter from "./controllers/voice-command.controller";
 import smsRouter from "./controllers/sms.controller";
+import placesRouter from "./controllers/places.controller";
+import rideAlongRouter from "./controllers/ride-along.controller";
 
 const app = express();
-admin.initializeApp({
-  credential: admin.credential.cert({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-  }),
-});
+
+if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    }),
+  });
+  console.log("Firebase initialized");
+} else {
+  console.warn("Firebase credentials missing — push notifications disabled");
+}
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -75,3 +83,5 @@ app.use("/emergency-contact/v1", emergencyContactRouter);
 app.use("/emergency-alert/v1", emergencyAlertRouter);
 app.use("/event/v1", eventRouter);
 app.use("/voice-command/v1", voiceCommandRouter);
+app.use("/places/v1", placesRouter);
+app.use("/ride-along/v1", rideAlongRouter);

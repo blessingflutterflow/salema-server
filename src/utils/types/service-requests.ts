@@ -19,6 +19,17 @@ export interface IServiceRequest extends mongoose.Document {
   body?: string;
   location?: { coordinates: ICoordinates };
   events: mongoose.Types.ObjectId[];
+  // Vehicle escort fields
+  escortTier?: "general" | "standard" | "premium" | "presidential";
+  numVehicles?: number;
+  isArmed?: boolean;
+  price?: number;
+  destination?: string;
+  driverLocation?: {
+    latitude: number;
+    longitude: number;
+    updatedAt: Date;
+  };
 }
 
 interface ICoordinates {

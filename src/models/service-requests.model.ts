@@ -65,6 +65,20 @@ const serviceRequestSchema: Schema<IServiceRequest> = new Schema(
         },
       },
     },
+    // Vehicle escort fields
+    escortTier: {
+      type: String,
+      enum: ["general", "standard", "premium", "presidential"],
+    },
+    numVehicles: { type: Number },
+    isArmed: { type: Boolean },
+    price: { type: Number },
+    destination: { type: String },
+    driverLocation: {
+      latitude: { type: Number },
+      longitude: { type: Number },
+      updatedAt: { type: Date },
+    },
   },
   {
     versionKey: false,

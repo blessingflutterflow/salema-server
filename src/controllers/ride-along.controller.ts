@@ -6,6 +6,8 @@ import FcmToken from "../models/fcmToken.model";
 import { sendNotification } from "../utils/helpers/fcm-messager";
 import decodeToken from "../middlewares/decodeToken";
 import authorizeClient from "../middlewares/authorizeClient";
+import authorizeSecurityCompany from "../middlewares/authorizeSecurityCompany";
+import { publishToEscortChannel } from "../utils/helpers/ably";
 
 const router = express.Router();
 const MAPS_KEY = process.env.GOOGLE_MAPS_KEY ?? "";
@@ -178,9 +180,9 @@ router.post("/book", decodeToken, authorizeClient, async (req: any, res: any) =>
     }
 
     let nearest = companies[0];
-    let minDist = haversine(lat, lng, nearest.latitude, nearest.longitude);
+    let minDist = haversine(lat, lng, Number(nearest.latitude), Number(nearest.longitude));
     for (const c of companies) {
-      const d = haversine(lat, lng, c.latitude, c.longitude);
+      const d = haversine(lat, lng, Number(c.latitude), Number(c.longitude));
       if (d < minDist) { minDist = d; nearest = c; }
     }
 
@@ -231,3 +233,112 @@ router.post("/book", decodeToken, authorizeClient, async (req: any, res: any) =>
 });
 
 export default router;
+
+// ─── POST /ride-along/v1/accept ───────────────────────────────────────────────
+// Body: { serviceRequestId }
+
+router.post("/accept", decodeToken, authorizeSecurityCompany, async (req: any, res: any) => {
+  try {
+    const { serviceRequestId } = req.body;
+    if (!serviceRequestId) {
+      return res.status(400).json({ status: "ERROR", message: "serviceRequestId required." });
+    }
+
+    const serviceRequest = await ServiceRequest.findById(serviceRequestId);
+    if (!serviceRequest) {
+      return res.status(404).json({ status: "ERROR", message: "Service request not found." });
+    }
+
+    if (serviceRequest.requestStatus !== "pending") {
+      return res.status(409).json({ status: "ERROR", message: "Request is no longer pending." });
+    }
+
+    serviceRequest.requestStatus = "in-progress";
+    await serviceRequest.save();
+
+    // Notify client via Ably
+    await publishToEscortChannel(serviceRequestId, "status", {
+      status: "accepted",
+      message: "Your escort request has been accepted. Guard is on the way.",
+      ts: Date.now(),
+    });
+
+    // Notify client via FCM
+    const clientFcm = await FcmToken.find({ userId: serviceRequest.client });
+    const tokens = clientFcm.map((d: any) => d.fcmToken);
+    if (tokens.length > 0) {
+      await sendNotification(tokens, "Escort Accepted!", "Your security escort is on the way.");
+    }
+
+    return res.json({ status: "OK", message: "Request accepted.", serviceRequestId });
+  } catch (err: any) {
+    console.error("Accept error:", err);
+    return res.status(500).json({ status: "ERROR", message: err.message });
+  }
+});
+
+// ─── POST /ride-along/v1/decline ──────────────────────────────────────────────
+// Body: { serviceRequestId }
+
+router.post("/decline", decodeToken, authorizeSecurityCompany, async (req: any, res: any) => {
+  try {
+    const { serviceRequestId } = req.body;
+    if (!serviceRequestId) {
+      return res.status(400).json({ status: "ERROR", message: "serviceRequestId required." });
+    }
+
+    const serviceRequest = await ServiceRequest.findById(serviceRequestId);
+    if (!serviceRequest) {
+      return res.status(404).json({ status: "ERROR", message: "Service request not found." });
+    }
+
+    serviceRequest.requestStatus = "rejected";
+    await serviceRequest.save();
+
+    // Try to reassign to next nearest verified company
+    const lat = serviceRequest.location?.coordinates?.latitude ?? 0;
+    const lng = serviceRequest.location?.coordinates?.longitude ?? 0;
+
+    const companies = await SecurityCompany.find({
+      isDeleted: false,
+      verificationStatus: "verified",
+      latitude: { $exists: true },
+      longitude: { $exists: true },
+      _id: { $ne: serviceRequest.securityCompany },
+    }).select("_id latitude longitude");
+
+    if (companies.length > 0) {
+      let nearest = companies[0];
+      let minDist = haversine(lat, lng, Number(nearest.latitude), Number(nearest.longitude));
+      for (const c of companies) {
+        const d = haversine(lat, lng, Number(c.latitude), Number(c.longitude));
+        if (d < minDist) { minDist = d; nearest = c; }
+      }
+
+      const nextUser = await User.findOne({ profile: nearest._id });
+      if (nextUser) {
+        const newRequest = new ServiceRequest({
+          ...serviceRequest.toObject(),
+          _id: undefined,
+          securityCompany: nextUser._id,
+          requestStatus: "pending",
+          requestNumber: Math.floor(100000 + Math.random() * 900000).toString(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+        await newRequest.save();
+
+        const fcmDocs = await FcmToken.find({ userId: nextUser._id });
+        const tokens = fcmDocs.map((d: any) => d.fcmToken);
+        if (tokens.length > 0) {
+          await sendNotification(tokens, "New Ride Along Request", "A client has booked a vehicle escort.");
+        }
+      }
+    }
+
+    return res.json({ status: "OK", message: "Request declined." });
+  } catch (err: any) {
+    console.error("Decline error:", err);
+    return res.status(500).json({ status: "ERROR", message: err.message });
+  }
+});

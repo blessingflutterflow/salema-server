@@ -12,11 +12,11 @@ const router = express.Router();
 
 router.post(
   "/",
+  // securityCompany is optional for vehicle-escort (auto-assigned)
   body("securityCompany")
+    .optional()
     .isMongoId()
-    .withMessage("Invalid security company ID.")
-    .notEmpty()
-    .withMessage("Security company ID is required."),
+    .withMessage("Invalid security company ID."),
 
   body("requestedServices")
     .isArray()
@@ -56,6 +56,18 @@ router.post(
     }),
 
   body("body").optional().isString().withMessage("Body must be a string."),
+
+  // Vehicle escort specific fields
+  body("escortTier")
+    .optional()
+    .isIn(["general", "standard", "premium", "presidential"])
+    .withMessage("escortTier must be general, standard, premium, or presidential."),
+
+  body("destination")
+    .optional()
+    .isString()
+    .withMessage("Destination must be a string."),
+
   decodeToken,
   authorizeClient,
   serviceRequestServices.create
@@ -95,6 +107,29 @@ router.put(
   decodeToken,
   authorizeSecurityCompany,
   serviceRequestServices.update
+);
+
+// Officer accept / start / complete an escort
+router.patch(
+  "/:id/officer-action",
+  param("id").isMongoId().withMessage("Invalid service request ID."),
+  body("action")
+    .isIn(["accept", "start", "complete"])
+    .withMessage("action must be accept, start, or complete."),
+  decodeToken,
+  authorizeSecurityOfficer,
+  serviceRequestServices.officerAction
+);
+
+// Officer pushes live GPS location
+router.post(
+  "/:id/location",
+  param("id").isMongoId().withMessage("Invalid service request ID."),
+  body("latitude").isFloat().withMessage("latitude must be a number."),
+  body("longitude").isFloat().withMessage("longitude must be a number."),
+  decodeToken,
+  authorizeSecurityOfficer,
+  serviceRequestServices.updateDriverLocation
 );
 
 router.patch(

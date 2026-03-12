@@ -4,7 +4,8 @@ import FcmToken from "../../models/fcmToken.model";
 export const sendNotification = async (
   tokens: string[],
   title: string,
-  message: string
+  message: string,
+  data?: Record<string, string>
 ) => {
   const promises = tokens.map(async (token) => {
     if (typeof token === "string" && token.length > 0) {
@@ -16,6 +17,7 @@ export const sendNotification = async (
             title,
             body: message,
           },
+          ...(data ? { data } : {}),
           android: {
             notification: {
               channelId: 'danger-alerts',

@@ -26,6 +26,9 @@ export const upsertFcmToken = async (
 
     const { fcmToken } = req.body;
 
+    // Remove any existing doc with this token (could belong to a different userId)
+    await FcmToken.deleteOne({ fcmToken });
+
     await FcmToken.findOneAndUpdate(
       { userId },
       { fcmToken, role },

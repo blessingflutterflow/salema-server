@@ -218,7 +218,19 @@ router.post("/book", decodeToken, authorizeClient, async (req: any, res: any) =>
     const fcmDocs = await FcmToken.find({ userId: companyUser._id });
     const tokens = fcmDocs.map((d: any) => d.fcmToken);
     if (tokens.length > 0) {
-      await sendNotification(tokens, "New Ride Along Request", "A client has booked a vehicle escort.");
+      await sendNotification(
+        tokens,
+        "New Ride Along Request",
+        "A client has booked a vehicle escort.",
+        {
+          type: "ride_along_request",
+          serviceRequestId: String(serviceRequest._id),
+          destination: destinationAddress,
+          tier: tierId,
+          price: String(price),
+          numVehicles: String(numVehicles ?? 1),
+        }
+      );
     }
 
     return res.status(201).json({
@@ -296,8 +308,8 @@ router.post("/decline", decodeToken, authorizeSecurityCompany, async (req: any, 
     await serviceRequest.save();
 
     // Try to reassign to next nearest verified company
-    const lat = serviceRequest.location?.coordinates?.latitude ?? 0;
-    const lng = serviceRequest.location?.coordinates?.longitude ?? 0;
+    const lat = Number(serviceRequest.location?.coordinates?.latitude ?? 0);
+    const lng = Number(serviceRequest.location?.coordinates?.longitude ?? 0);
 
     const companies = await SecurityCompany.find({
       isDeleted: false,
@@ -339,6 +351,60 @@ router.post("/decline", decodeToken, authorizeSecurityCompany, async (req: any, 
     return res.json({ status: "OK", message: "Request declined." });
   } catch (err: any) {
     console.error("Decline error:", err);
+    return res.status(500).json({ status: "ERROR", message: err.message });
+  }
+});
+
+// ─── POST /ride-along/v1/location ─────────────────────────────────────────────
+// Body: { serviceRequestId, lat, lng }
+
+function calcBearing(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLng = toRad(lng2 - lng1);
+  const y = Math.sin(dLng) * Math.cos(toRad(lat2));
+  const x =
+    Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+    Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+router.post("/location", decodeToken, authorizeSecurityCompany, async (req: any, res: any) => {
+  try {
+    const { serviceRequestId, lat, lng } = req.body;
+    if (!serviceRequestId || lat == null || lng == null) {
+      return res.status(400).json({ status: "ERROR", message: "serviceRequestId, lat and lng required." });
+    }
+
+    const serviceRequest = await ServiceRequest.findById(serviceRequestId);
+    if (!serviceRequest) {
+      return res.status(404).json({ status: "ERROR", message: "Service request not found." });
+    }
+
+    // Calculate bearing from previous location
+    const prev = serviceRequest.driverLocation;
+    let bearing = 0;
+    if (prev?.latitude != null && prev?.longitude != null) {
+      bearing = calcBearing(
+        Number(prev.latitude), Number(prev.longitude),
+        Number(lat), Number(lng)
+      );
+    }
+
+    // Save new driver location
+    serviceRequest.driverLocation = { latitude: lat, longitude: lng };
+    await serviceRequest.save();
+
+    // Broadcast to client via Ably
+    await publishToEscortChannel(serviceRequestId, "location", {
+      lat: Number(lat),
+      lng: Number(lng),
+      bearing,
+      ts: Date.now(),
+    });
+
+    return res.json({ status: "OK" });
+  } catch (err: any) {
+    console.error("Location error:", err);
     return res.status(500).json({ status: "ERROR", message: err.message });
   }
 });

@@ -229,6 +229,8 @@ router.post("/book", decodeToken, authorizeClient, async (req: any, res: any) =>
           tier: tierId,
           price: String(price),
           numVehicles: String(numVehicles ?? 1),
+          pickupLat: String(lat),
+          pickupLng: String(lng),
         }
       );
     }
@@ -391,7 +393,7 @@ router.post("/location", decodeToken, authorizeSecurityCompany, async (req: any,
     }
 
     // Save new driver location
-    serviceRequest.driverLocation = { latitude: lat, longitude: lng };
+    serviceRequest.driverLocation = { latitude: lat, longitude: lng, updatedAt: new Date() };
     await serviceRequest.save();
 
     // Broadcast to client via Ably
@@ -405,6 +407,26 @@ router.post("/location", decodeToken, authorizeSecurityCompany, async (req: any,
     return res.json({ status: "OK" });
   } catch (err: any) {
     console.error("Location error:", err);
+    return res.status(500).json({ status: "ERROR", message: err.message });
+  }
+});
+
+// ─── POST /ride-along/v1/complete ─────────────────────────────────────────────
+router.post("/complete", decodeToken, authorizeSecurityCompany, async (req: any, res: any) => {
+  try {
+    const { serviceRequestId } = req.body;
+    if (!serviceRequestId) {
+      return res.status(400).json({ status: "ERROR", message: "serviceRequestId required." });
+    }
+    const serviceRequest = await ServiceRequest.findById(serviceRequestId);
+    if (!serviceRequest) {
+      return res.status(404).json({ status: "ERROR", message: "Service request not found." });
+    }
+    serviceRequest.requestStatus = "completed";
+    await serviceRequest.save();
+    await publishToEscortChannel(serviceRequestId, "status", { status: "completed", ts: Date.now() });
+    return res.json({ status: "OK", message: "Escort completed." });
+  } catch (err: any) {
     return res.status(500).json({ status: "ERROR", message: err.message });
   }
 });

@@ -421,6 +421,50 @@ router.post("/location", decodeToken, authorizeSecurityCompany, async (req: any,
   }
 });
 
+// ─── POST /ride-along/v1/cancel ───────────────────────────────────────────────
+// Either client or company can cancel before escort is in-progress
+router.post("/cancel", decodeToken, async (req: any, res: any) => {
+  try {
+    const { serviceRequestId } = req.body;
+    if (!serviceRequestId) {
+      return res.status(400).json({ status: "ERROR", message: "serviceRequestId required." });
+    }
+    const serviceRequest = await ServiceRequest.findById(serviceRequestId);
+    if (!serviceRequest) {
+      return res.status(404).json({ status: "ERROR", message: "Service request not found." });
+    }
+
+    const cancellableStatuses = ["pending", "approved", "en_route", "arrived"];
+    if (!cancellableStatuses.includes(serviceRequest.requestStatus)) {
+      return res.status(409).json({ status: "ERROR", message: "Cannot cancel an escort that is already in progress or completed." });
+    }
+
+    serviceRequest.requestStatus = "rejected";
+    await serviceRequest.save();
+
+    await publishToEscortChannel(serviceRequestId, "status", {
+      status: "cancelled",
+      message: "The escort has been cancelled.",
+      ts: Date.now(),
+    });
+
+    // Notify the other party via FCM
+    const notifyUserId = req.user?.role === "GU"
+      ? serviceRequest.securityCompany
+      : serviceRequest.client;
+
+    const fcmDocs = await FcmToken.find({ userId: notifyUserId });
+    const tokens = fcmDocs.map((d: any) => d.fcmToken);
+    if (tokens.length > 0) {
+      await sendNotification(tokens, "Escort Cancelled", "The escort request has been cancelled.");
+    }
+
+    return res.json({ status: "OK", message: "Escort cancelled." });
+  } catch (err: any) {
+    return res.status(500).json({ status: "ERROR", message: err.message });
+  }
+});
+
 // ─── POST /ride-along/v1/arrived ──────────────────────────────────────────────
 // Company calls this when they reach the client's pickup location
 router.post("/arrived", decodeToken, authorizeSecurityCompany, async (req: any, res: any) => {

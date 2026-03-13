@@ -10,6 +10,8 @@ export interface IServiceRequest extends mongoose.Document {
   requestStatus:
     | "pending"
     | "approved"
+    | "en_route"
+    | "arrived"
     | "rejected"
     | "in-progress"
     | "completed";
@@ -50,7 +52,7 @@ export interface CreateRequestDto {
 
 export interface UpdateRequestDto {
   serviceRequestId: mongoose.Types.ObjectId;
-  status: "pending" | "approved" | "rejected" | "in-progress" | "completed";
+  status: "pending" | "approved" | "en_route" | "arrived" | "rejected" | "in-progress" | "completed";
   assignedOfficers: mongoose.Types.ObjectId[];
   body: string;
 }

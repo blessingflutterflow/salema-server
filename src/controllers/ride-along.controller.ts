@@ -267,7 +267,7 @@ router.post("/accept", decodeToken, authorizeSecurityCompany, async (req: any, r
       return res.status(409).json({ status: "ERROR", message: "Request is no longer pending." });
     }
 
-    serviceRequest.requestStatus = "in-progress";
+    serviceRequest.requestStatus = "approved";
     await serviceRequest.save();
 
     // Notify client via Ably

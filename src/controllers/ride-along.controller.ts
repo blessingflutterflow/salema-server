@@ -392,6 +392,16 @@ router.post("/location", decodeToken, authorizeSecurityCompany, async (req: any,
       );
     }
 
+    // Auto-promote to en_route on first GPS ping after approval
+    if (serviceRequest.requestStatus === "approved") {
+      serviceRequest.requestStatus = "en_route";
+      await publishToEscortChannel(serviceRequestId, "status", {
+        status: "en_route",
+        message: "Guard is on the way.",
+        ts: Date.now(),
+      });
+    }
+
     // Save new driver location
     serviceRequest.driverLocation = { latitude: lat, longitude: lng, updatedAt: new Date() };
     await serviceRequest.save();
@@ -407,6 +417,76 @@ router.post("/location", decodeToken, authorizeSecurityCompany, async (req: any,
     return res.json({ status: "OK" });
   } catch (err: any) {
     console.error("Location error:", err);
+    return res.status(500).json({ status: "ERROR", message: err.message });
+  }
+});
+
+// ─── POST /ride-along/v1/arrived ──────────────────────────────────────────────
+// Company calls this when they reach the client's pickup location
+router.post("/arrived", decodeToken, authorizeSecurityCompany, async (req: any, res: any) => {
+  try {
+    const { serviceRequestId } = req.body;
+    if (!serviceRequestId) {
+      return res.status(400).json({ status: "ERROR", message: "serviceRequestId required." });
+    }
+    const serviceRequest = await ServiceRequest.findById(serviceRequestId);
+    if (!serviceRequest) {
+      return res.status(404).json({ status: "ERROR", message: "Service request not found." });
+    }
+
+    serviceRequest.requestStatus = "arrived";
+    await serviceRequest.save();
+
+    await publishToEscortChannel(serviceRequestId, "status", {
+      status: "arrived",
+      message: "Your guard has arrived at your location.",
+      ts: Date.now(),
+    });
+
+    // FCM to client
+    const clientFcm = await FcmToken.find({ userId: serviceRequest.client });
+    const tokens = clientFcm.map((d: any) => d.fcmToken);
+    if (tokens.length > 0) {
+      await sendNotification(tokens, "Guard Arrived!", "Your security guard is at your location.");
+    }
+
+    return res.json({ status: "OK", message: "Marked as arrived.", serviceRequestId });
+  } catch (err: any) {
+    return res.status(500).json({ status: "ERROR", message: err.message });
+  }
+});
+
+// ─── POST /ride-along/v1/start ────────────────────────────────────────────────
+// Client calls this to confirm escort has started (after guard arrives)
+router.post("/start", decodeToken, authorizeClient, async (req: any, res: any) => {
+  try {
+    const { serviceRequestId } = req.body;
+    if (!serviceRequestId) {
+      return res.status(400).json({ status: "ERROR", message: "serviceRequestId required." });
+    }
+    const serviceRequest = await ServiceRequest.findById(serviceRequestId);
+    if (!serviceRequest) {
+      return res.status(404).json({ status: "ERROR", message: "Service request not found." });
+    }
+
+    serviceRequest.requestStatus = "in-progress";
+    await serviceRequest.save();
+
+    await publishToEscortChannel(serviceRequestId, "status", {
+      status: "in_progress",
+      message: "Escort has started.",
+      ts: Date.now(),
+    });
+
+    // FCM to company
+    const companyFcm = await FcmToken.find({ userId: serviceRequest.securityCompany });
+    const tokens = companyFcm.map((d: any) => d.fcmToken);
+    if (tokens.length > 0) {
+      await sendNotification(tokens, "Escort Started", "The client has confirmed the escort has started.");
+    }
+
+    return res.json({ status: "OK", message: "Escort started.", serviceRequestId });
+  } catch (err: any) {
     return res.status(500).json({ status: "ERROR", message: err.message });
   }
 });

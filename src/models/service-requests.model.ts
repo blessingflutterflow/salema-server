@@ -31,7 +31,7 @@ const serviceRequestSchema: Schema<IServiceRequest> = new Schema(
     ],
     requestStatus: {
       type: String,
-      enum: ["pending", "approved", "rejected", "in-progress", "completed"],
+      enum: ["pending", "approved", "en_route", "arrived", "rejected", "in-progress", "completed"],
       required: true,
     },
     paymentId: {

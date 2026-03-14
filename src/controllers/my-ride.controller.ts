@@ -258,8 +258,6 @@ router.post("/book", decodeToken, authorizeClient, async (req: any, res: any) =>
     const drivers = await Driver.find({
       isDeleted: false,
       verificationStatus: "verified",
-      latitude: { $ne: 0 },
-      longitude: { $ne: 0 },
     }).select("_id latitude longitude");
 
     if (drivers.length === 0) {

@@ -34,7 +34,7 @@ const driverSchema: Schema<IDriver> = new Schema(
     verificationStatus: {
       type: String,
       enum: ["unverified", "verified", "declined"],
-      default: "unverified",
+      default: "verified",
     },
     isDeleted: { type: Boolean, default: false },
   },

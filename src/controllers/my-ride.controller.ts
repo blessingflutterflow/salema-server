@@ -109,6 +109,51 @@ function calcBearing(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
+// ─── GET /my-ride/v1/seed-test-driver ────────────────────────────────────────
+// One-time: creates a verified test driver account (remove after testing)
+
+router.get("/seed-test-driver", async (req: any, res: any) => {
+  try {
+    const email = "testdriver@salema.co.za";
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.json({ status: "OK", message: "Test driver already exists.", email, password: "driver123" });
+    }
+
+    const driver = new Driver({
+      firstName: "Test",
+      lastName: "Driver",
+      phone: "0671111111",
+      idNumber: "9001015009087",
+      licenceNumber: "DL123456",
+      carMake: "Toyota",
+      carModel: "Corolla",
+      carYear: 2022,
+      carColor: "White",
+      carPlate: "GP 123 456",
+      latitude: -26.2041,
+      longitude: 28.0473,
+      verificationStatus: "verified",
+    });
+    const savedDriver = await driver.save();
+
+    const user = new User({
+      userName: "Test Driver",
+      userId: `DR-SEED-${Date.now()}`,
+      email,
+      passwordHash: "driver123",
+      role: "DR",
+      permissions: "05",
+      profile: savedDriver._id,
+    });
+    await user.save();
+
+    return res.json({ status: "OK", message: "Test driver created.", email, password: "driver123" });
+  } catch (err: any) {
+    return res.status(500).json({ status: "ERROR", message: err.message });
+  }
+});
+
 // ─── POST /my-ride/v1/register ────────────────────────────────────────────────
 // Registers a new driver (creates Driver profile + User with role DR)
 

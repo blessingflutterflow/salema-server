@@ -22,6 +22,7 @@ import voiceCommandRouter from "./controllers/voice-command.controller";
 import smsRouter from "./controllers/sms.controller";
 import placesRouter from "./controllers/places.controller";
 import rideAlongRouter from "./controllers/ride-along.controller";
+import myRideRouter from "./controllers/my-ride.controller";
 
 const app = express();
 
@@ -85,3 +86,4 @@ app.use("/event/v1", eventRouter);
 app.use("/voice-command/v1", voiceCommandRouter);
 app.use("/places/v1", placesRouter);
 app.use("/ride-along/v1", rideAlongRouter);
+app.use("/my-ride/v1", myRideRouter);

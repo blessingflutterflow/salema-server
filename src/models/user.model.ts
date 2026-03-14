@@ -30,7 +30,7 @@ const userSchema: Schema<IUser> = new Schema(
     },
     role: {
       type: String,
-      enum: ["AD", "MG", "SO", "GU"],
+      enum: ["AD", "MG", "SO", "GU", "DR"],
       required: true,
     },
     permissions: {

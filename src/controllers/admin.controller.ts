@@ -6,6 +6,8 @@ import User from "../models/user.model";
 import SecurityCompany from "../models/security-company.model";
 import Driver from "../models/driver.model";
 import ServiceRequest from "../models/service-requests.model";
+import FcmToken from "../models/fcmToken.model";
+import { sendNotification } from "../utils/helpers/fcm-messager";
 
 const router = express.Router();
 
@@ -64,11 +66,22 @@ router.get("/security-companies", decodeToken, authorizeAdmin, async (req: any, 
 // ─── POST /admin/v1/security-companies/:id/verify ─────────────────────────────
 router.post("/security-companies/:id/verify", decodeToken, authorizeAdmin, async (req: any, res: any) => {
   try {
-    await SecurityCompany.findByIdAndUpdate(req.params.id, {
+    const company = await SecurityCompany.findByIdAndUpdate(req.params.id, {
       verificationStatus: "verified",
       verifiedAt: new Date(),
       verifiedBy: req.user._id,
-    });
+    }, { new: true });
+
+    // Send FCM to company owner
+    const companyUser = await User.findOne({ profile: req.params.id, role: "MG" });
+    if (companyUser) {
+      const fcmDocs = await FcmToken.find({ userId: companyUser._id });
+      const tokens = fcmDocs.map((d: any) => d.fcmToken);
+      if (tokens.length > 0) {
+        await sendNotification(tokens, "Application Approved!", "Your security company has been verified. You can now go online and receive escort requests.");
+      }
+    }
+
     return res.json({ status: "OK", message: "Company verified." });
   } catch (err: any) {
     return res.status(500).json({ status: "ERROR", message: err.message });
@@ -79,6 +92,17 @@ router.post("/security-companies/:id/verify", decodeToken, authorizeAdmin, async
 router.post("/security-companies/:id/decline", decodeToken, authorizeAdmin, async (req: any, res: any) => {
   try {
     await SecurityCompany.findByIdAndUpdate(req.params.id, { verificationStatus: "declined" });
+
+    // Send FCM to company owner
+    const companyUser = await User.findOne({ profile: req.params.id, role: "MG" });
+    if (companyUser) {
+      const fcmDocs = await FcmToken.find({ userId: companyUser._id });
+      const tokens = fcmDocs.map((d: any) => d.fcmToken);
+      if (tokens.length > 0) {
+        await sendNotification(tokens, "Application Declined", "Unfortunately your security company application was not approved. Please contact support for more information.");
+      }
+    }
+
     return res.json({ status: "OK", message: "Company declined." });
   } catch (err: any) {
     return res.status(500).json({ status: "ERROR", message: err.message });
@@ -102,6 +126,16 @@ router.get("/drivers", decodeToken, authorizeAdmin, async (req: any, res: any) =
 router.post("/drivers/:id/verify", decodeToken, authorizeAdmin, async (req: any, res: any) => {
   try {
     await Driver.findByIdAndUpdate(req.params.id, { verificationStatus: "verified" });
+
+    const driverUser = await User.findOne({ profile: req.params.id, role: "DR" });
+    if (driverUser) {
+      const fcmDocs = await FcmToken.find({ userId: driverUser._id });
+      const tokens = fcmDocs.map((d: any) => d.fcmToken);
+      if (tokens.length > 0) {
+        await sendNotification(tokens, "Application Approved!", "You are now a verified Salema driver. Go online to start receiving ride requests.");
+      }
+    }
+
     return res.json({ status: "OK", message: "Driver verified." });
   } catch (err: any) {
     return res.status(500).json({ status: "ERROR", message: err.message });
@@ -112,6 +146,16 @@ router.post("/drivers/:id/verify", decodeToken, authorizeAdmin, async (req: any,
 router.post("/drivers/:id/decline", decodeToken, authorizeAdmin, async (req: any, res: any) => {
   try {
     await Driver.findByIdAndUpdate(req.params.id, { verificationStatus: "declined" });
+
+    const driverUser = await User.findOne({ profile: req.params.id, role: "DR" });
+    if (driverUser) {
+      const fcmDocs = await FcmToken.find({ userId: driverUser._id });
+      const tokens = fcmDocs.map((d: any) => d.fcmToken);
+      if (tokens.length > 0) {
+        await sendNotification(tokens, "Application Declined", "Unfortunately your driver application was not approved. Please contact support.");
+      }
+    }
+
     return res.json({ status: "OK", message: "Driver declined." });
   } catch (err: any) {
     return res.status(500).json({ status: "ERROR", message: err.message });

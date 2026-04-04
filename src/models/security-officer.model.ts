@@ -1,60 +1,31 @@
 import mongoose, { Model, Schema } from "mongoose";
 
-import { ISecurityOfficer } from "../utils/types/security-officer";
+export interface IGuard {
+  firstName: string;
+  lastName: string;
+  psiraNumber: string;
+  pin: string; // hashed PIN for guard login
+  companyId: mongoose.Types.ObjectId;
+  fcmToken?: string;
+  available: boolean;   // true = online and free
+  isOnline: boolean;
+  isDeleted: boolean;
+}
 
-const securityOfficerSchema: Schema<ISecurityOfficer> = new Schema(
+const guardSchema: Schema<IGuard> = new Schema(
   {
-    firstName: {
-      type: String,
-      required: true,
-    },
-    lastName: {
-      type: String,
-      required: true,
-    },
-    psiraNumber: {
-      type: String,
-      required: true,
-    },
-    phone: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    assignedCompany: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "SecurityCompany",
-      required: true,
-    },
-    assignedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    availabilityStatus: {
-      type: String,
-      enum: ["available", "unavailable", "on-duty"],
-      required: true,
-    },
-    skills: {
-      type: [String],
-      required: true,
-    },
-    experienceYears: {
-      type: Number,
-      required: true,
-    },
-    grade: {
-      type: String,
-      enum: ["A", "B", "C", "D", "E"],
-      required: true,
-    },
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
+    psiraNumber: { type: String, required: true },
+    pin: { type: String, required: true }, // company sets a 4-digit PIN
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: "SecurityCompany", required: true },
+    fcmToken: { type: String },
+    available: { type: Boolean, default: true },
+    isOnline: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true, versionKey: false }
 );
 
-const SecurityOfficer: Model<ISecurityOfficer> =
-  mongoose.model<ISecurityOfficer>("SecurityOfficer", securityOfficerSchema);
-
-export default SecurityOfficer;
+const Guard: Model<IGuard> = mongoose.model<IGuard>("SecurityOfficer", guardSchema);
+export default Guard;

@@ -26,6 +26,20 @@ import myRideRouter from "./controllers/my-ride.controller";
 
 const app = express();
 
+// ─── CORS ─────────────────────────────────────────────────────────────────────
+app.use((req: Request, res: Response, next: any) => {
+  const allowed = ['http://localhost:3000', 'http://localhost:3001', 'https://salema-admin.vercel.app'];
+  const origin = req.headers.origin as string;
+  if (allowed.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
   admin.initializeApp({
     credential: admin.credential.cert({

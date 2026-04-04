@@ -37,25 +37,8 @@ router.post(
     .isLength({ min: 6 })
     .withMessage("Password must be at least 6 characters long"),
 
-  body("branches")
-    .isArray()
-    .withMessage("Branches must be an array")
-    .custom((value) => {
-      if (!value.every((branch: any) => typeof branch === "string")) {
-        throw new Error("Each branch must be a string");
-      }
-      return true;
-    }),
-
-  body("securityServices")
-    .isArray()
-    .withMessage("Security services must be an array")
-    .custom((value) => {
-      if (!value.every((service: any) => typeof service === "string")) {
-        throw new Error("Each security service must be a string");
-      }
-      return true;
-    }),
+  body("branches").optional().isArray(),
+  body("securityServices").optional().isArray(),
   securityCompanyServices.register
 );
 

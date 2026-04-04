@@ -60,8 +60,8 @@ const register = async (req: Request, res: Response): Promise<any> => {
       email,
       latitude,
       longitude,
-      servicesOffered: securityServices,
-      branches,
+      servicesOffered: securityServices ?? [],
+      branches: branches ?? [],
     });
 
     savedCompany = await securityCompany.save();

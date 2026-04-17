@@ -2,11 +2,11 @@
   "name": "mansalema-backend",
   "version": "1.0.0",
   "description": "This is a backend for Mansalema Security Operations Management to simplify the management of complex security services.",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "start": "ts-node src/index.ts",
+    "start": "node dist/index.js",
     "dev": "nodemon"
   },
   "keywords": [

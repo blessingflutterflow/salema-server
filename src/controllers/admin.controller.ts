@@ -54,7 +54,7 @@ router.get("/stats", decodeToken, authorizeAdmin, async (req: any, res: any) => 
 router.get("/security-companies", decodeToken, authorizeAdmin, async (req: any, res: any) => {
   try {
     const users = await User.find({ role: "MG", isDeleted: false })
-      .populate("profile")
+      .populate({ path: "profile", model: "SecurityCompany" })
       .sort({ createdAt: -1 })
       .lean();
     return res.json({ status: "OK", companies: users });

@@ -65,7 +65,7 @@ const register = async (req: Request, res: Response): Promise<any> => {
     });
 
     savedCompany = await securityCompany.save();
-    sendAdminNotification(companyName, email, phone);
+    sendAdminNotification(companyName, email, phone).catch(err => console.error("Admin notification failed:", err));
 
     const user = new User({
       userName: companyName,

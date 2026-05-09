@@ -45,9 +45,22 @@ const securityCompanySchema: Schema<ISecurityCompany> = new Schema(
     officers: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "SecurityOfficer",
+        ref: "User",
       },
     ],
+    serviceRadius: {
+      type: Number,
+      default: 50, // km
+    },
+    supportedTiers: {
+      type: [String],
+      enum: ["standard", "premium", "presidential"],
+      default: ["standard"],
+    },
+    operatingHours: {
+      start: { type: String, default: "08:00" },
+      end: { type: String, default: "18:00" },
+    },
     verificationStatus: {
       type: String,
       enum: ["unverified", "verified", "declined"],

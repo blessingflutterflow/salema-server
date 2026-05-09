@@ -9,7 +9,7 @@ import {
   UpdateCompanyDto,
 } from "../utils/types/security-company";
 import CustomRequest from "../utils/types/express";
-import SecurityOfficer from "../models/security-officer.model";
+import Guard from "../models/security-officer.model";
 import { RegisterOfficerDto } from "../utils/types/security-officer";
 import { Types } from "mongoose";
 import FcmToken from "../models/fcmToken.model";
@@ -209,12 +209,13 @@ const addOfficer = async (req: CustomRequest, res: Response): Promise<any> => {
       lastName,
       psiraNumber,
       phone,
-      availabilityStatus,
-      skills,
-      experienceYears,
       email,
+      badgeNumber,
       password,
       grade,
+      isArmed,
+      vehicleType,
+      isTacticalTrained,
     }: RegisterOfficerDto = req.body;
     const requestUserId = req.user?.id;
 
@@ -227,22 +228,30 @@ const addOfficer = async (req: CustomRequest, res: Response): Promise<any> => {
     }
 
     const requestedUser = await User.findById(requestUserId);
+    const companyId = requestedUser?.profile;
 
-    const securityOfficer = new SecurityOfficer({
+    // Create the guard profile
+    const guard = new Guard({
       firstName,
       lastName,
       psiraNumber,
       phone,
+      email,
+      badgeNumber,
+      companyId,
       grade,
-      availabilityStatus,
-      skills,
-      experienceYears,
-      assignedBy: requestUserId,
-      assignedCompany: requestedUser?.profile,
+      isArmed: isArmed ?? false,
+      vehicleType: vehicleType ?? "foot",
+      isTacticalTrained: isTacticalTrained ?? false,
+      available: true,
+      isOnline: false,
+      rating: 0,
+      totalTrips: 0,
     });
 
-    savedOfficer = await securityOfficer.save();
+    savedOfficer = await guard.save();
 
+    // Create user account for guard
     const user = new User({
       userId:
         firstName.toLowerCase().slice(0, 4) +
@@ -257,16 +266,18 @@ const addOfficer = async (req: CustomRequest, res: Response): Promise<any> => {
 
     savedUser = await user.save();
 
+    // Add guard to company's officers list
     await SecurityCompany.findByIdAndUpdate(
-      requestedUser?.profile,
+      companyId,
       { $push: { officers: savedUser._id } },
       { new: true }
     );
 
+    // Send welcome email
     requestedUser &&
       sendEmail({
         to: [email],
-        subject: "Account was created for you",
+        subject: "Your Salema Guard Account",
         html: registerSecurityOfficerEmailBody(
           `${firstName} ${lastName}`,
           email,
@@ -281,10 +292,19 @@ const addOfficer = async (req: CustomRequest, res: Response): Promise<any> => {
     return res.status(201).json({
       status: "OK",
       message: "Security officer added successfully",
+      guard: {
+        _id: savedOfficer._id,
+        firstName,
+        lastName,
+        badgeNumber,
+        grade,
+        isArmed,
+        vehicleType,
+      },
     });
   } catch (error) {
     if (savedOfficer) {
-      await SecurityOfficer.findByIdAndDelete(savedOfficer._id);
+      await Guard.findByIdAndDelete(savedOfficer._id);
     }
     if (savedUser) {
       await User.findByIdAndDelete(savedUser._id);
@@ -302,29 +322,18 @@ const listOfficers = async (
   req: CustomRequest,
   res: Response
 ): Promise<any> => {
-  const userId = req.user?.profile;
+  const companyId = req.user?.profile;
   try {
-    const securityCompany = await SecurityCompany.findById(userId).populate({
-      path: "officers",
-      model: "User",
-      select: "-passwordHash -userId -userName -createdAt -updatedAt",
-      populate: {
-        path: "profile",
-        select: "-assignedCompany -assignedBy -isDeleted -createdAt -updatedAt",
-        model: "SecurityOfficer",
-      },
+    // Find guards directly by companyId
+    const guards = await Guard.find({
+      companyId,
+      isDeleted: false,
+    }).select("-isDeleted -createdAt -updatedAt -fcmToken");
+
+    return res.status(200).json({
+      status: "OK",
+      guards,
     });
-
-    if (!securityCompany) {
-      return res.status(404).json({
-        status: "ERROR",
-        message: "Security company not found for this user",
-      });
-    }
-
-    return res
-      .status(200)
-      .json({ status: "OK", officers: securityCompany.officers });
   } catch (error: any) {
     return res.status(500).json({ status: "ERROR", message: error.message });
   }

@@ -99,36 +99,43 @@ router.post(
     .notEmpty()
     .withMessage("Phone number cannot be empty."),
 
-  body("availabilityStatus")
-    .isIn(["available", "unavailable", "on-duty"])
-    .withMessage(
-      "Availability status must be one of: available, unavailable, on-duty."
-    ),
-
-  body("skills")
-    .isArray()
-    .withMessage("Skills must be an array.")
-    .notEmpty()
-    .withMessage("Skills cannot be empty."),
-
-  body("experienceYears")
-    .isInt({ min: 0 })
-    .withMessage("Experience years must be a non-negative integer."),
-
   body("email")
     .isEmail()
     .withMessage("A valid email is required.")
     .notEmpty()
     .withMessage("Email cannot be empty."),
 
+  body("badgeNumber")
+    .isString()
+    .withMessage("Badge number is required.")
+    .notEmpty()
+    .withMessage("Badge number cannot be empty."),
+
   body("password")
     .isString()
     .withMessage("Password is required and must be a string.")
     .notEmpty()
     .withMessage("Password cannot be empty."),
+
   body("grade")
     .isIn(["A", "B", "C", "D", "E"])
-    .withMessage("Grade must be one of the following: A, B, C, D, or E"),
+    .withMessage("Grade must be one of: A, B, C, D, or E"),
+
+  body("isArmed")
+    .isBoolean()
+    .optional()
+    .withMessage("isArmed must be a boolean"),
+
+  body("vehicleType")
+    .isIn(["foot", "bike", "car"])
+    .optional()
+    .withMessage("Vehicle type must be: foot, bike, or car"),
+
+  body("isTacticalTrained")
+    .isBoolean()
+    .optional()
+    .withMessage("isTacticalTrained must be a boolean"),
+
   decodeToken,
   authorizeSecurityCompany,
   securityCompanyServices.addOfficer

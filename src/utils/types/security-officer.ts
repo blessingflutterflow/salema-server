@@ -5,13 +5,24 @@ export interface ISecurityOfficer {
   lastName: string;
   psiraNumber: string;
   phone: string;
-  assignedCompany: mongoose.Types.ObjectId;
-  availabilityStatus: "available" | "unavailable" | "on-duty";
-  skills: string[];
-  experienceYears: number;
-  assignedBy: mongoose.Types.ObjectId;
-  isDeleted: boolean;
+  email: string;
+  badgeNumber: string;
+  photoUrl?: string;
+  companyId: mongoose.Types.ObjectId;
   grade: "A" | "B" | "C" | "D" | "E";
+  isArmed: boolean;
+  vehicleType: "foot" | "bike" | "car";
+  isTacticalTrained: boolean;
+  available: boolean;
+  isOnline: boolean;
+  lastLocation?: {
+    latitude: number;
+    longitude: number;
+    timestamp: Date;
+  };
+  rating: number;
+  totalTrips: number;
+  isDeleted: boolean;
 }
 
 export interface RegisterOfficerDto {
@@ -19,20 +30,25 @@ export interface RegisterOfficerDto {
   lastName: string;
   psiraNumber: string;
   phone: string;
-  availabilityStatus: "available" | "unavailable" | "on-duty";
-  skills: string[];
-  experienceYears: number;
   email: string;
+  badgeNumber: string;
   password: string;
   grade: "A" | "B" | "C" | "D" | "E";
+  isArmed: boolean;
+  vehicleType: "foot" | "bike" | "car";
+  isTacticalTrained?: boolean;
 }
 
 export interface UpdateOfficerDto {
-  firstName: string;
-  lastName: string;
-  psiraNumber: string;
-  phone: string;
-  availabilityStatus: "available" | "unavailable" | "on-duty";
-  skills: string[];
-  experienceYears: number;
+  firstName?: string;
+  lastName?: string;
+  psiraNumber?: string;
+  phone?: string;
+  badgeNumber?: string;
+  grade?: "A" | "B" | "C" | "D" | "E";
+  isArmed?: boolean;
+  vehicleType?: "foot" | "bike" | "car";
+  isTacticalTrained?: boolean;
+  available?: boolean;
+  isOnline?: boolean;
 }

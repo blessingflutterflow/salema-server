@@ -1,6 +1,6 @@
 import { Response } from "express";
 import CustomRequest from "../utils/types/express";
-import SecurityOfficer from "../models/security-officer.model";
+import Guard from "../models/security-officer.model";
 import { UpdateOfficerDto } from "../utils/types/security-officer";
 import { validationResult } from "express-validator";
 
@@ -8,17 +8,17 @@ const myProfile = async (req: CustomRequest, res: Response): Promise<any> => {
   try {
     const profileId = req.user?.profile;
 
-    const securityOfficer = await SecurityOfficer.findById(profileId).select(
-      "-createdAt -updatedAt -isDeleted -assignedCompany -assignedBy"
+    const guard = await Guard.findById(profileId).select(
+      "-isDeleted -createdAt -updatedAt -fcmToken"
     );
 
-    if (!securityOfficer) {
+    if (!guard) {
       return res
         .status(404)
-        .json({ status: "ERROR", message: "Cannot find officer profile" });
+        .json({ status: "ERROR", message: "Cannot find guard profile" });
     }
 
-    return res.status(200).json({ status: "OK", profile: securityOfficer });
+    return res.status(200).json({ status: "OK", profile: guard });
   } catch (error) {
     console.error(error);
     return res
@@ -42,32 +42,35 @@ const updateProfile = async (
       lastName,
       psiraNumber,
       phone,
-      availabilityStatus,
-      skills,
-      experienceYears,
+      badgeNumber,
+      grade,
+      isArmed,
+      vehicleType,
+      isTacticalTrained,
     }: UpdateOfficerDto = req.body;
     const profileId = req.user?.profile;
 
-    const securityOfficer = await SecurityOfficer.findById(profileId);
+    const guard = await Guard.findById(profileId);
 
-    if (!securityOfficer) {
+    if (!guard) {
       return res
         .status(404)
-        .json({ status: "ERROR", message: "Cannot find officer profile" });
+        .json({ status: "ERROR", message: "Cannot find guard profile" });
     }
 
-    const updatedValues = {
-      firstName,
-      lastName,
-      psiraNumber,
-      phone,
-      availabilityStatus,
-      skills,
-      experienceYears,
-    };
+    const updatedValues: Partial<UpdateOfficerDto> = {};
+    if (firstName) updatedValues.firstName = firstName;
+    if (lastName) updatedValues.lastName = lastName;
+    if (psiraNumber) updatedValues.psiraNumber = psiraNumber;
+    if (phone) updatedValues.phone = phone;
+    if (badgeNumber) updatedValues.badgeNumber = badgeNumber;
+    if (grade) updatedValues.grade = grade;
+    if (isArmed !== undefined) updatedValues.isArmed = isArmed;
+    if (vehicleType) updatedValues.vehicleType = vehicleType;
+    if (isTacticalTrained !== undefined) updatedValues.isTacticalTrained = isTacticalTrained;
 
-    Object.assign(securityOfficer, updatedValues);
-    await securityOfficer.save();
+    Object.assign(guard, updatedValues);
+    await guard.save();
 
     return res
       .status(200)

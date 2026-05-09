@@ -10,10 +10,16 @@ export interface ISecurityCompany {
   servicesOffered: string[];
   branches: string[];
   officers: mongoose.Types.ObjectId[];
+  serviceRadius: number; // km
+  supportedTiers: ("standard" | "premium" | "presidential")[];
+  operatingHours: {
+    start: string;
+    end: string;
+  };
   verificationStatus: "unverified" | "verified" | "declined";
   verifiedAt?: Date;
   verifiedBy?: mongoose.Types.ObjectId;
-  latitude: number;     
+  latitude: number;
   longitude: number;
 }
 
@@ -32,12 +38,18 @@ export interface RegisterCompanyDto {
 }
 
 export interface UpdateCompanyDto {
-  companyName: string;
-  address: string;
-  psiraNumber: string;
-  contactPerson: string;
-  phone: string;
-  securityServices: string[];
-  branches: string[];
-  officers: string[];
+  companyName?: string;
+  address?: string;
+  psiraNumber?: string;
+  contactPerson?: string;
+  phone?: string;
+  securityServices?: string[];
+  branches?: string[];
+  officers?: string[];
+  serviceRadius?: number;
+  supportedTiers?: ("standard" | "premium" | "presidential")[];
+  operatingHours?: {
+    start?: string;
+    end?: string;
+  };
 }

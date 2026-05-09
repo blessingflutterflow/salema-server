@@ -4,6 +4,7 @@ import decodeToken from "../middlewares/decodeToken";
 import Guard from "../models/security-officer.model";
 import Car from "../models/car.model";
 import SecurityCompany from "../models/security-company.model";
+import User from "../models/user.model";
 
 const router = express.Router();
 
@@ -30,7 +31,7 @@ router.get("/profile", decodeToken, authorizeCompany, async (req: any, res: any)
 router.get("/guards", decodeToken, authorizeCompany, async (req: any, res: any) => {
   try {
     const guards = await Guard.find({ companyId: req.user.profile, isDeleted: false })
-      .select("-pin")
+      .select("-isDeleted")
       .sort({ createdAt: -1 })
       .lean();
     return res.json({ status: "OK", guards });
@@ -40,28 +41,60 @@ router.get("/guards", decodeToken, authorizeCompany, async (req: any, res: any) 
 });
 
 // ─── POST /company/v1/guards ──────────────────────────────────────────────────
+// DEPRECATED: Use /security-company/v1/add-officer instead
+// This endpoint kept for backward compatibility but uses new Guard model
 router.post("/guards", decodeToken, authorizeCompany, async (req: any, res: any) => {
   try {
-    const { firstName, lastName, psiraNumber, pin } = req.body;
-    if (!firstName || !lastName || !psiraNumber || !pin) {
-      return res.status(400).json({ status: "ERROR", message: "firstName, lastName, psiraNumber and pin are required." });
+    const { firstName, lastName, psiraNumber, badgeNumber, phone, email, password, grade, isArmed, vehicleType, isTacticalTrained } = req.body;
+    if (!firstName || !lastName || !psiraNumber || !badgeNumber || !phone || !email || !password || !grade) {
+      return res.status(400).json({ status: "ERROR", message: "firstName, lastName, psiraNumber, badgeNumber, phone, email, password, and grade are required." });
     }
-    if (pin.length !== 4 || isNaN(Number(pin))) {
-      return res.status(400).json({ status: "ERROR", message: "PIN must be exactly 4 digits." });
-    }
-    const hashedPin = await bcrypt.hash(pin, 10);
+
+    // Create guard with new tier fields
     const guard = await Guard.create({
       firstName,
       lastName,
       psiraNumber,
-      pin: hashedPin,
+      badgeNumber,
+      phone,
+      email,
       companyId: req.user.profile,
+      grade,
+      isArmed: isArmed ?? false,
+      vehicleType: vehicleType ?? 'foot',
+      isTacticalTrained: isTacticalTrained ?? false,
       available: true,
       isOnline: false,
+      rating: 0,
+      totalTrips: 0,
     });
-    return res.status(201).json({ status: "OK", guard: { ...guard.toObject(), pin: undefined } });
+
+    // Create user account for guard login
+    const user = new User({
+      userId: firstName.toLowerCase().slice(0, 4) + Math.floor(1000 + Math.random() * 9000),
+      userName: `${firstName} ${lastName}`,
+      email,
+      profile: guard._id,
+      passwordHash: password,
+      role: "SO",
+      permissions: "04",
+    });
+    await user.save();
+
+    return res.status(201).json({
+      status: "OK",
+      guard: {
+        _id: guard._id,
+        firstName,
+        lastName,
+        badgeNumber,
+        grade,
+        isArmed,
+        vehicleType,
+      }
+    });
   } catch (err: any) {
-    if (err.code === 11000) return res.status(400).json({ status: "ERROR", message: "A guard with this PSIRA number already exists." });
+    if (err.code === 11000) return res.status(400).json({ status: "ERROR", message: "A guard with this email or badge number already exists." });
     return res.status(500).json({ status: "ERROR", message: err.message });
   }
 });
@@ -127,18 +160,28 @@ router.delete("/cars/:id", decodeToken, authorizeCompany, async (req: any, res: 
 });
 
 // ─── POST /company/v1/guards/login ───────────────────────────────────────────
-// Guard logs in with psiraNumber + PIN → gets a JWT with guardId + companyId
+// Guard logs in with email + password (User account) → gets a JWT
 router.post("/guards/login", async (req: any, res: any) => {
   try {
-    const { psiraNumber, pin, fcmToken } = req.body;
-    if (!psiraNumber || !pin) {
-      return res.status(400).json({ status: "ERROR", message: "psiraNumber and pin are required." });
+    const { email, password, fcmToken } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ status: "ERROR", message: "email and password are required." });
     }
-    const guard = await Guard.findOne({ psiraNumber, isDeleted: false });
-    if (!guard) return res.status(404).json({ status: "ERROR", message: "Guard not found." });
 
-    const valid = await bcrypt.compare(pin, guard.pin);
-    if (!valid) return res.status(401).json({ status: "ERROR", message: "Invalid PIN." });
+    // Find user by email with role SO (Security Officer/Guard)
+    const user = await User.findOne({ email, role: "SO" });
+    if (!user) return res.status(404).json({ status: "ERROR", message: "Guard not found." });
+
+    // Validate password
+    const bcrypt = require("bcrypt");
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) return res.status(401).json({ status: "ERROR", message: "Invalid password." });
+
+    // Get guard profile
+    const guard = await Guard.findById(user.profile);
+    if (!guard || guard.isDeleted) {
+      return res.status(404).json({ status: "ERROR", message: "Guard profile not found." });
+    }
 
     // Save FCM token if provided
     if (fcmToken) {
@@ -148,7 +191,7 @@ router.post("/guards/login", async (req: any, res: any) => {
 
     const jwt = require("jsonwebtoken");
     const token = jwt.sign(
-      { guardId: guard._id, companyId: guard.companyId, role: "GD" },
+      { guardId: guard._id, companyId: guard.companyId, role: "SO" },
       process.env.JWT_SECRET || "secret",
       { expiresIn: "30d" }
     );

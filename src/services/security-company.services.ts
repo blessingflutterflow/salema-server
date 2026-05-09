@@ -40,7 +40,10 @@ const register = async (req: Request, res: Response): Promise<any> => {
       address,
       latitude,
       longitude,
-    }: RegisterCompanyDto = req.body;
+      psiraGrade,
+      isArmed,
+      vehicleType,
+    }: RegisterCompanyDto & { psiraGrade?: string; isArmed?: boolean; vehicleType?: string } = req.body;
 
     // Check if email already exists
     const existingUser = await User.findOne({ email });
@@ -62,6 +65,9 @@ const register = async (req: Request, res: Response): Promise<any> => {
       longitude,
       servicesOffered: securityServices ?? [],
       branches: branches ?? [],
+      psiraGrade: psiraGrade ?? "C",
+      isArmed: isArmed ?? false,
+      vehicleType: vehicleType ?? "car",
     });
 
     savedCompany = await securityCompany.save();

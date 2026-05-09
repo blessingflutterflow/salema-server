@@ -10,7 +10,7 @@ export interface ISecurityCompany {
   servicesOffered: string[];
   branches: string[];
   officers: mongoose.Types.ObjectId[];
-  serviceRadius: number; // km
+  serviceRadius: number;
   supportedTiers: ("standard" | "premium" | "presidential")[];
   operatingHours: {
     start: string;
@@ -21,6 +21,9 @@ export interface ISecurityCompany {
   verifiedBy?: mongoose.Types.ObjectId;
   latitude: number;
   longitude: number;
+  psiraGrade?: "A" | "B" | "C" | "D" | "E";
+  isArmed?: boolean;
+  vehicleType?: "foot" | "bike" | "car";
 }
 
 export interface RegisterCompanyDto {

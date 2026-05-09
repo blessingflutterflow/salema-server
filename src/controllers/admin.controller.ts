@@ -162,6 +162,22 @@ router.post("/drivers/:id/decline", decodeToken, authorizeAdmin, async (req: any
   }
 });
 
+// ─── GET /admin/v1/providers/online ──────────────────────────────────────────
+router.get("/providers/online", decodeToken, authorizeAdmin, async (req: any, res: any) => {
+  try {
+    const companies = await SecurityCompany.find({
+      isDeleted: false,
+      verificationStatus: "verified",
+      isOnline: true,
+      latitude: { $exists: true },
+      longitude: { $exists: true },
+    }).select("companyName contactPerson phone psiraGrade isArmed vehicleType latitude longitude").lean();
+    return res.json({ status: "OK", providers: companies });
+  } catch (err: any) {
+    return res.status(500).json({ status: "ERROR", message: err.message });
+  }
+});
+
 // ─── GET /admin/v1/clients ────────────────────────────────────────────────────
 router.get("/clients", decodeToken, authorizeAdmin, async (req: any, res: any) => {
   try {

@@ -168,6 +168,7 @@ router.post("/book", decodeToken, authorizeClient, async (req: any, res: any) =>
     const companies = await SecurityCompany.find({
       isDeleted: false,
       verificationStatus: "verified",
+      isOnline: true,
       latitude: { $exists: true },
       longitude: { $exists: true },
     }).select("_id latitude longitude");
@@ -175,7 +176,7 @@ router.post("/book", decodeToken, authorizeClient, async (req: any, res: any) =>
     if (companies.length === 0) {
       return res.status(404).json({
         status: "ERROR",
-        message: "No verified security companies available in your area.",
+        message: "No security providers are online in your area right now. Please try again shortly.",
       });
     }
 
@@ -242,6 +243,34 @@ router.post("/book", decodeToken, authorizeClient, async (req: any, res: any) =>
     });
   } catch (err: any) {
     console.error("Book error:", err);
+    return res.status(500).json({ status: "ERROR", message: err.message });
+  }
+});
+
+// ─── POST /ride-along/v1/go-online ───────────────────────────────────────────
+router.post("/go-online", decodeToken, authorizeSecurityCompany, async (req: any, res: any) => {
+  try {
+    const { lat, lng } = req.body;
+    if (lat == null || lng == null) {
+      return res.status(400).json({ status: "ERROR", message: "lat and lng required." });
+    }
+    await SecurityCompany.findByIdAndUpdate(req.user.profile, {
+      isOnline: true,
+      latitude: Number(lat),
+      longitude: Number(lng),
+    });
+    return res.json({ status: "OK", message: "You are now online." });
+  } catch (err: any) {
+    return res.status(500).json({ status: "ERROR", message: err.message });
+  }
+});
+
+// ─── POST /ride-along/v1/go-offline ──────────────────────────────────────────
+router.post("/go-offline", decodeToken, authorizeSecurityCompany, async (req: any, res: any) => {
+  try {
+    await SecurityCompany.findByIdAndUpdate(req.user.profile, { isOnline: false });
+    return res.json({ status: "OK", message: "You are now offline." });
+  } catch (err: any) {
     return res.status(500).json({ status: "ERROR", message: err.message });
   }
 });

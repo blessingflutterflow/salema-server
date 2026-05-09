@@ -24,6 +24,7 @@ export interface ISecurityCompany {
   psiraGrade?: "A" | "B" | "C" | "D" | "E";
   isArmed?: boolean;
   vehicleType?: "foot" | "bike" | "car";
+  isOnline?: boolean;
 }
 
 export interface RegisterCompanyDto {

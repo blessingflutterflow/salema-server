@@ -80,6 +80,7 @@ const securityCompanySchema: Schema<ISecurityCompany> = new Schema(
     psiraGrade: { type: String, enum: ["A", "B", "C", "D", "E"] },
     isArmed: { type: Boolean, default: false },
     vehicleType: { type: String, enum: ["foot", "bike", "car"], default: "car" },
+    isOnline: { type: Boolean, default: false },
   },
   { timestamps: true, versionKey: false }
 );

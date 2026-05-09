@@ -391,6 +391,11 @@ export const get = async (req: CustomRequest, res: Response): Promise<any> => {
         path: "securityCompany",
         model: "User",
         select: "-passwordHash -isDeleted -createdAt -updatedAt",
+        populate: {
+          path: "profile",
+          model: "SecurityCompany",
+          select: "companyName contactPerson phone psiraGrade isArmed vehicleType",
+        },
       });
 
     if (!serviceRequest || serviceRequest.isDeleted) {

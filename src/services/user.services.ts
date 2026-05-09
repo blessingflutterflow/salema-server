@@ -30,25 +30,6 @@ const login = async (req: Request, res: Response): Promise<any> => {
       return res.status(401).json({ status: "ERROR", message: "Invalid credentials." });
     }
 
-    // 🛡️ Check company verification if user is MG
-    if (user.role === "MG") {
-      const company = await SecurityCompany.findById(user.profile);
-
-      if (!company) {
-        return res.status(404).json({
-          status: "ERROR",
-          message: "Security company not found.",
-        });
-      }
-
-      if (company.verificationStatus !== "verified") {
-        return res.status(403).json({
-          status: "ERROR",
-          message: "Your company is not yet verified by the admin.",
-        });
-      }
-    }
-
     const jwtSecret = process.env.JWT_SECRET ?? "JWT_SECRET";
     const access_token = jwt.sign(
       {
@@ -69,6 +50,7 @@ const login = async (req: Request, res: Response): Promise<any> => {
       role: user.role,
       access_token,
       userName: user.userName,
+      profile: user.profile,
     });
     
     
